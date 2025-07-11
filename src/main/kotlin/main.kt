@@ -4,6 +4,7 @@ import io.grpc.netty.NettyServerBuilder
 import io.lettuce.core.RedisClient
 import io.lettuce.core.codec.ByteArrayCodec
 import java.util.concurrent.TimeUnit
+import grpc.ghostcache.auth.JwtAuthInterceptor
 
 fun main() {
     val grpcPort = System.getenv("GRPC_PORT")?.toInt() ?: 50051
