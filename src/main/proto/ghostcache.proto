@@ -45,7 +45,7 @@ message CreateSessionRequest { string user_id = 1; int32 ttlSec = 2; } // defaul
 message CreateSessionReply   { string session_id = 1; }
 
 message GetSessionRequest    { string session_id = 1; }
-message GetSessionReply      { bool valid = 1; string user_id = 2; }
+message GetSessionReply      { bool valid = 1; bytes payload = 2; }
 
 message DeleteSessionRequest { string session_id = 1; }
 message DeleteSessionReply   { bool ok = 1; }
