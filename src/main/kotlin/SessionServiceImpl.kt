@@ -22,6 +22,15 @@ class SessionServiceImpl(
         CreateSessionReply.newBuilder().setSessionId(id).build()
     }
 
+    override suspend fun putSession(
+        request: PutSessionRequest
+    ): PutSessionReply {
+        val ttl = if (request.ttlSec > 0) request.ttlSec else 3600
+        val key = request.sessionId
+        redis.setex(key.toByteArray(), ttl.toLong(), request.payload.toByteArray())
+        return PutSessionReply.newBuilder().setOk(true).build()
+    }
+
     override suspend fun getSession(
         request: GetSessionRequest
     ): GetSessionReply = withContext(Dispatchers.IO) {

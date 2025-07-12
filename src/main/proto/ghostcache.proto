@@ -22,6 +22,7 @@ service SessionService {
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionReply);
   rpc GetSession   (GetSessionRequest)    returns (GetSessionReply);
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionReply);
+  rpc PutSession   (PutSessionRequest)    returns (PutSessionReply);
 }
 
 // ─── Common messages (cache) ──────────────────────────────────────────────
@@ -48,3 +49,11 @@ message GetSessionReply      { bool valid = 1; string user_id = 2; }
 
 message DeleteSessionRequest { string session_id = 1; }
 message DeleteSessionReply   { bool ok = 1; }
+
+message PutSessionRequest  {
+  string session_id = 1;   // the ID from the cookie
+  int32  ttlSec     = 2;   // renew TTL; 0 = use default
+  bytes  payload    = 3;   // opaque blob
+}
+
+message PutSessionReply    { bool ok = 1; }
