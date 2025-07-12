@@ -8,7 +8,7 @@ import kotlinx.coroutines.withContext
 import java.util.*
 
 class SessionServiceImpl(
-    private val redis: RedisCommands<ByteArray, ByteArray>
+    private val redis: RedisCommands<String, String>
 ) : SessionServiceCoroutineImplBase() {
 
     private fun key(id: String) = "session:$id".toByteArray()
@@ -25,20 +25,26 @@ class SessionServiceImpl(
     override suspend fun putSession(
         request: PutSessionRequest
     ): PutSessionReply {
-        val ttl = if (request.ttlSec > 0) request.ttlSec else 3600
-        val key = request.sessionId
-        redis.setex(key.toByteArray(), ttl.toLong(), request.payload.toByteArray())
+        val ttl  = if (request.ttlSec > 0) request.ttlSec else 3_600
+        val key  = request.sessionId                        // already String
+        val blob = Base64.getEncoder().encodeToString(      // keep payload binary
+            request.payload.toByteArray()
+        )
+
+        redis.setex(key, ttl.toLong(), blob)               // key & value = String
         return PutSessionReply.newBuilder().setOk(true).build()
     }
 
     override suspend fun getSession(
         request: GetSessionRequest
-    ): GetSessionReply = withContext(Dispatchers.IO) {
-        val data = redis.get(key(request.sessionId))
-        if (data != null) {
+    ): GetSessionReply {
+        val stored = redis.get(request.sessionId)
+        return if (stored != null) {
             GetSessionReply.newBuilder()
                 .setValid(true)
-                .setUserId(String(data))
+                .setPayload(
+                    ByteString.copyFrom(Base64.getDecoder().decode(stored))
+                )
                 .build()
         } else {
             GetSessionReply.newBuilder().setValid(false).build()
@@ -47,8 +53,8 @@ class SessionServiceImpl(
 
     override suspend fun deleteSession(
         request: DeleteSessionRequest
-    ): DeleteSessionReply = withContext(Dispatchers.IO) {
-        val removed = redis.del(key(request.sessionId)) > 0
-        DeleteSessionReply.newBuilder().setOk(removed).build()
+    ): DeleteSessionReply {
+        val removed = redis.del(request.sessionId) > 0
+        return DeleteSessionReply.newBuilder().setOk(removed).build()
     }
 }

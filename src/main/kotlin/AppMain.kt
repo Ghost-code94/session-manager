@@ -2,7 +2,7 @@ package ghostcache.api
 
 import io.grpc.netty.NettyServerBuilder
 import io.lettuce.core.RedisClient
-import io.lettuce.core.codec.ByteArrayCodec
+import io.lettuce.core.codec.StringCodec 
 import java.util.concurrent.TimeUnit
 import grpc.ghostcache.auth.JwtAuthInterceptor
 
@@ -13,9 +13,9 @@ fun main() {
         ?: error("JWT_SECRET environment variable not set")
 
     // ── Redis ────────────────────────────────────────────────
-    val client      = RedisClient.create(redisUri)
-    val connection  = client.connect(ByteArrayCodec())
-    val commands    = connection.sync()
+    val client     = RedisClient.create(redisUri)
+    val connection = client.connect(StringCodec.UTF8)          // ✅ UTF-8 strings
+    val redis      = connection.sync()
 
     // ── gRPC server ──────────────────────────────────────────
     val server = NettyServerBuilder.forPort(grpcPort)
