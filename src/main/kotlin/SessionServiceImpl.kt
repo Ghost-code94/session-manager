@@ -1,7 +1,7 @@
 package ghostcache.api
 
-import ghostcache.api.SessionServiceGrpcKt.SessionServiceCoroutineImplBase
-import ghostcache.api.*
+import grpc.ghostcache.SessionServiceGrpcKt.SessionServiceCoroutineImplBase
+import grpc.ghostcache.*
 import io.lettuce.core.api.sync.RedisCommands
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
