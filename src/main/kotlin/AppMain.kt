@@ -20,8 +20,8 @@ fun main() {
     // ── gRPC server ──────────────────────────────────────────
     val server = NettyServerBuilder.forPort(grpcPort)
         .intercept(JwtAuthInterceptor(jwtSecret))      // ← your existing auth
-        .addService(SessionServiceImpl(commands))      // new session API
-        .permitKeepAliveWithoutCalls(true)
+        .addService(SessionServiceImpl(redis))      // new session API
+        .keepAliveWithoutCalls(true)
         .build()
         .start()
 
