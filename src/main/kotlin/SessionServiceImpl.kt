@@ -10,19 +10,6 @@ import java.util.*
 class SessionServiceImpl(
     private val redis: RedisCommands<String, String>   // String,String
 ) : SessionServiceGrpcKt.SessionServiceCoroutineImplBase() {
-
-    /* --------------- CreateSession ---------------- */
-    override suspend fun createSession(
-        request: CreateSessionRequest
-    ): CreateSessionReply = withContext(Dispatchers.IO) {
-        val id  = UUID.randomUUID().toString()
-        val ttl = if (request.ttlSec > 0) request.ttlSec else 3_600
-        val blob = Base64.getEncoder().encodeToString(request.payload.toByteArray())
-
-        redis.setex(id, ttl.toLong(), blob)          // key + value are String
-        CreateSessionReply.newBuilder().setSessionId(id).build()
-    }
-
     /* --------------- PutSession ------------------- */
     override suspend fun putSession(
         request: PutSessionRequest
