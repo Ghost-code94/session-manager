@@ -4,40 +4,12 @@ package grpc.ghostcache;
 option java_package       = "grpc.ghostcache";
 option java_multiple_files = true;
 
-// ─── Cache (unchanged) ────────────────────────────────────────────────────
-service CacheService {
-  rpc Get(GetRequest)               returns (GetReply);
-  rpc Put(PutRequest)               returns (PutReply);
-  rpc Invalidate(InvalidateRequest) returns (InvalidateReply);
-  rpc ListKeys(Empty)               returns (stream KeyEntry);
-
-  // Versioning
-  rpc GetVersioned(VersionedGetRequest) returns (GetReply);
-  rpc History(GetRequest)               returns (HistoryReply);
-  rpc Rollback(VersionedGetRequest)     returns (PutReply);
-}
-
 // ─── NEW  Session service ─────────────────────────────────────────────────
 service SessionService {
   rpc GetSession   (GetSessionRequest)    returns (GetSessionReply);
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionReply);
   rpc PutSession   (PutSessionRequest)    returns (PutSessionReply);
 }
-
-// ─── Common messages (cache) ──────────────────────────────────────────────
-message Empty {}
-
-message GetRequest         { string key  = 1; }
-message GetReply           { bool found  = 1; bytes value = 2; }
-message PutRequest         { string key  = 1; bytes value = 2; int32 ttlSec = 3; }
-message PutReply           { bool ok     = 1; }
-message InvalidateRequest  { string key  = 1; }
-message InvalidateReply    { bool ok     = 1; }
-message KeyEntry           { string key  = 1; }
-
-message VersionedGetRequest { string key = 1; string version = 2; }
-message HistoryEntry        { string version = 1; int64 timestamp = 2; }
-message HistoryReply        { repeated HistoryEntry versions = 1; }
 
 // ─── Session messages ─────────────────────────────────────────────────────
 
