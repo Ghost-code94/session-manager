@@ -19,7 +19,6 @@ service CacheService {
 
 // ─── NEW  Session service ─────────────────────────────────────────────────
 service SessionService {
-  rpc CreateSession(CreateSessionRequest) returns (CreateSessionReply);
   rpc GetSession   (GetSessionRequest)    returns (GetSessionReply);
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionReply);
   rpc PutSession   (PutSessionRequest)    returns (PutSessionReply);
@@ -41,8 +40,6 @@ message HistoryEntry        { string version = 1; int64 timestamp = 2; }
 message HistoryReply        { repeated HistoryEntry versions = 1; }
 
 // ─── Session messages ─────────────────────────────────────────────────────
-message CreateSessionRequest { string user_id = 1; int32 ttlSec = 2; } // default ttl set server-side
-message CreateSessionReply   { string session_id = 1; }
 
 message GetSessionRequest    { string session_id = 1; }
 message GetSessionReply      { bool valid = 1; bytes payload = 2; }
