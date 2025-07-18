@@ -21,7 +21,7 @@ class SessionServiceImpl(
 
         val ttl  = if (request.ttlSec > 0) request.ttlSec else 3_600
         val blob = Base64.getEncoder().encodeToString(request.payload.toByteArray())
-        redis.setex(request.sessionId, ttl.toLong(), blob)
+        redis.setex(request.sessionId, blob, ttl.toLong())
 
         log.info("PutSession sid=${request.sessionId} len=${blob.length}")
 
