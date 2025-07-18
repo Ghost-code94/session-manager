@@ -11,6 +11,7 @@ class SessionServiceImpl(
     private val redis: RedisCommands<String, String>   // String,String
 ) : SessionServiceGrpcKt.SessionServiceCoroutineImplBase() {
     /* --------------- PutSession ------------------- */
+    private val log = Logger.getLogger("sessionservice")
     override suspend fun putSession(
         request: PutSessionRequest
     ): PutSessionReply = withContext(Dispatchers.IO) {
