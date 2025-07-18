@@ -17,6 +17,8 @@ class SessionServiceImpl(
         val ttl  = if (request.ttlSec > 0) request.ttlSec else 3_600
         val blob = Base64.getEncoder().encodeToString(request.payload.toByteArray())
         redis.setex(request.sessionId, ttl.toLong(), blob)
+        log.info("PutSession sid={} len={}", request.sessionId, blob.length)
+
         PutSessionReply.newBuilder().setOk(true).build()
     }
 
@@ -25,6 +27,9 @@ class SessionServiceImpl(
         request: GetSessionRequest
     ): GetSessionReply = withContext(Dispatchers.IO) {
         val stored = redis.get(request.sessionId)
+        log.info("GetSession sid={} len={} raw='{}'", request.sessionId,
+                stored?.length ?: -1, stored?.take(20))
+
         if (stored != null) {
             GetSessionReply.newBuilder()
                 .setValid(true)
