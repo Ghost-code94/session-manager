@@ -14,26 +14,30 @@ class SessionServiceImpl(
 ) : SessionServiceGrpcKt.SessionServiceCoroutineImplBase() {
     /* --------------- PutSession ------------------- */
     private val log = Logger.getLogger("sessionservice")
+
     override suspend fun putSession(
         request: PutSessionRequest
     ): PutSessionReply = withContext(Dispatchers.IO) {
+
         val ttl  = if (request.ttlSec > 0) request.ttlSec else 3_600
         val blob = Base64.getEncoder().encodeToString(request.payload.toByteArray())
         redis.setex(request.sessionId, ttl.toLong(), blob)
-        log.info("PutSession sid={} len={}", request.sessionId, blob.length)
+
+        log.info("PutSession sid=${request.sessionId} len=${blob.length}")
 
         PutSessionReply.newBuilder().setOk(true).build()
     }
 
-    /* --------------- GetSession ------------------- */
     override suspend fun getSession(
         request: GetSessionRequest
     ): GetSessionReply = withContext(Dispatchers.IO) {
-        val stored = redis.get(request.sessionId)
-        log.info("GetSession sid={} len={} raw='{}'", request.sessionId,
-                stored?.length ?: -1, stored?.take(20))
 
-        if (stored != null) {
+        val stored = redis.get(request.sessionId)
+        log.info(
+            "GetSession sid=${request.sessionId} len=${stored?.length ?: -1} raw='${stored?.take(20)}'"
+        )
+
+        if (!stored.isNullOrEmpty()) {
             GetSessionReply.newBuilder()
                 .setValid(true)
                 .setPayload(ByteString.copyFrom(Base64.getDecoder().decode(stored)))
