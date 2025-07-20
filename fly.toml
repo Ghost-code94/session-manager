@@ -21,12 +21,6 @@ primary_region = "dfw"
   [services.ports.tls_options]
     alpn = ["h2"]               # route only HTTP/2 (gRPC) traffic
 
-  [[services.tcp_checks]]
-    port               = 50051
-    interval_seconds   = 10
-    timeout_seconds    = 2
-    grace_period_seconds = 5
-
 # VM size
 [[vm]]
   memory_mb = 256
