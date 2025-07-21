@@ -1,12 +1,12 @@
+syntax = "proto3";
+
 package ghostcache.api.security;
+
 option java_package        = "ghostcache.api.security";
 option java_multiple_files = true;
 
 /**
- * DekCacheService stores **wrapped** DEKs (bytes encrypted by KMS / Key Vault).
- *  - `key_id` is an opaque identifier (e.g. "message‑dek").
- *  - `wrapped_key` is exactly what Azure Key Vault’s wrapKey() returns.
- *  - `ttl_sec` is optional time‑to‑live; 0 or missing ⇒ no expiry.
+ * DekCacheService stores wrapped DEKs (output of Key Vault `wrapKey()`).
  */
 service DekCacheService {
   rpc GetDek    (GetDekRequest)    returns (GetDekReply);
@@ -14,15 +14,32 @@ service DekCacheService {
   rpc DeleteDek (DeleteDekRequest) returns (DeleteDekReply);
 }
 
-message GetDekRequest  { string key_id = 1; }
-message GetDekReply    {
-  bool  found        = 1;
-  bytes wrapped_key  = 2;   // empty if not found
-  int32 ttl_sec_left = 3;   // 0 if no TTL or not found
+/* ─────────── Messages ────────────────────────────────────────────────── */
+
+message GetDekRequest {
+  string key_id = 1;
 }
 
-message PutDekRequest  { string key_id = 1; bytes wrapped_key = 2; int32 ttl_sec = 3; }
-message PutDekReply    { bool ok = 1; }
+message GetDekReply {
+  bool  found        = 1;
+  bytes wrapped_key  = 2;  // empty if not found
+  int32 ttl_sec_left = 3;  // 0 when no TTL / not found
+}
 
-message DeleteDekRequest { string key_id = 1; }
-message DeleteDekReply   { bool ok = 1; }
+message PutDekRequest {
+  string key_id      = 1;
+  bytes  wrapped_key = 2;
+  int32  ttl_sec     = 3;  // 0 = no expiry
+}
+
+message PutDekReply {
+  bool ok = 1;
+}
+
+message DeleteDekRequest {
+  string key_id = 1;
+}
+
+message DeleteDekReply {
+  bool ok = 1;
+}
