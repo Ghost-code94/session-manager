@@ -1,8 +1,7 @@
 syntax = "proto3";
 
-package ghostcache.api.security;
-
-option java_package        = "ghostcache.api.security";
+package grpc.ghostcache;
+option java_package       = "grpc.ghostcache";
 option java_multiple_files = true;
 
 /**
