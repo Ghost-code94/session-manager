@@ -38,8 +38,7 @@ ENV PATH="/opt/jre/bin:${PATH}"
 RUN addgroup -S ghost -g 1000 && adduser -S ghost -G ghost -u 1000
 
 WORKDIR /app
-ENV GRPC_PORT=50051 \
-    REDIS_URL=redis://localhost:6379
+ENV GRPC_PORT=50051
 
 # Copy artefacts (exact filename → single source)
 COPY --chown=ghost:ghost --from=build \

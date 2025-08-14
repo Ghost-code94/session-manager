@@ -8,7 +8,7 @@ import grpc.ghostcache.auth.JwtAuthInterceptor
 
 fun main() {
     val grpcPort = System.getenv("GRPC_PORT")?.toInt() ?: 50051
-    val redisUri = System.getenv("REDIS_URL") ?: "redis://localhost:6379"
+    val redisUri = System.getenv("REDIS_URL")
     val jwtSecret = System.getenv("JWT_SECRET")
         ?: error("JWT_SECRET environment variable not set")
 
