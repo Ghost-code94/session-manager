@@ -1,15 +1,14 @@
-package ghostcache.api      // ← match the proto package
+package ghostcache.api      // ← match your package
 
 import com.google.protobuf.ByteString
-import grpc.ghostcache.*                   // if you still need the session types elsewhere
+import grpc.ghostcache.*
 import io.lettuce.core.api.sync.RedisCommands
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.Base64
 import java.util.logging.Logger
 
 class DekCacheServiceImpl(
-    private val redis: RedisCommands<String, String>
+    private val redis: RedisCommands<String, ByteArray>   // String, ByteArray
 ) : DekCacheServiceGrpcKt.DekCacheServiceCoroutineImplBase() {
 
     private val log = Logger.getLogger("dekcacheservice")
@@ -18,13 +17,9 @@ class DekCacheServiceImpl(
     override suspend fun putDek(
         request: PutDekRequest
     ): PutDekReply = withContext(Dispatchers.IO) {
-
-        val ttl  = if (request.ttlSec > 0) request.ttlSec else 86_400  // default 24 h
-        val blob = Base64.getEncoder().encodeToString(request.wrappedKey.toByteArray())
-
-        // key, seconds, value
-        redis.setex(request.keyId, ttl.toLong(), blob)
-
+        val ttl = if (request.ttlSec > 0) request.ttlSec else 86_400 // 24h
+        val bytes = request.wrappedKey.toByteArray()
+        redis.setex(request.keyId, ttl.toLong(), bytes)
         PutDekReply.newBuilder().setOk(true).build()
     }
 
@@ -32,16 +27,14 @@ class DekCacheServiceImpl(
     override suspend fun getDek(
         request: GetDekRequest
     ): GetDekReply = withContext(Dispatchers.IO) {
+        val stored  = redis.get(request.keyId)
+        val ttlLeft = redis.ttl(request.keyId)           // -2=no key, -1=no expiry
+        val ttlSafe = if (ttlLeft > 0) ttlLeft.toInt() else 0
 
-        val stored   = redis.get(request.keyId)
-        val ttlLeft  = redis.ttl(request.keyId)        // ‑2=no key, ‑1=no expiry
-        val ttlSafe  = if (ttlLeft > 0) ttlLeft.toInt() else 0
-
-
-        if (!stored.isNullOrEmpty()) {
+        if (stored != null) {
             GetDekReply.newBuilder()
                 .setFound(true)
-                .setWrappedKey(ByteString.copyFrom(Base64.getDecoder().decode(stored)))
+                .setWrappedKey(ByteString.copyFrom(stored))
                 .setTtlSecLeft(ttlSafe)
                 .build()
         } else {
