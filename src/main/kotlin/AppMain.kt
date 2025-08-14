@@ -22,7 +22,15 @@ fun main() {
         .intercept(JwtAuthInterceptor(jwtSecret))      // ← your existing auth
         .addService(SessionServiceImpl(redis))      // new session API
         .addService(DekCacheServiceImpl(redis))
-        .permitKeepAliveWithoutCalls(true)
+        // .permitKeepAliveWithoutCalls(true)
+        .permitKeepAliveWithoutCalls(false)
+        .keepAliveTime(30, TimeUnit.SECONDS)
+        .keepAliveTimeout(10, TimeUnit.SECONDS)
+        .maxInboundMessageSize(4 * 1024 * 1024)
+        .maxConnectionIdle(2, TimeUnit.MINUTES)
+        .maxConnectionAge(5, TimeUnit.MINUTES)
+        .maxConnectionAgeGrace(30, TimeUnit.SECONDS)
+
         .build()
         .start()
 
