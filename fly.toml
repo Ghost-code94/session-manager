@@ -19,6 +19,11 @@ primary_region = "dfw"
   [services.ports.tls_options]
     alpn = ["h2"]               # route only HTTP/2 (gRPC) traffic
 
+  [[services.concurrency]]
+    type = "connections"
+    hard_limit = 500
+    soft_limit = 400
+
 # VM size
 [[vm]]
   memory_mb = 512
