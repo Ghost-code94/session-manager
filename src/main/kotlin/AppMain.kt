@@ -21,7 +21,7 @@ fun main() {
     val bytesCodec: RedisCodec<String, ByteArray> =
         RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE)
     val connBytes = client.connect(bytesCodec)
-    val redisBytes = connBytes.async() // RedisAsyncCommands<String, ByteArray>
+    val redisBytes = connBytes.sync() // RedisAsyncCommands<String, ByteArray>
 
     val connStr = client.connect(StringCodec.UTF8)
     val redisStr = connStr.async()     // RedisAsyncCommands<String, String>
