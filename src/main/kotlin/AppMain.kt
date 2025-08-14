@@ -19,19 +19,15 @@ fun main() {
     val client = RedisClient.create(redisUri)
     client.setDefaultTimeout(Duration.ofSeconds(2))
 
-    // One connection using String keys + ByteArray values
     val bytesCodec: RedisCodec<String, ByteArray> =
         RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE)
     val connBytes = client.connect(bytesCodec)
-
-    // Get BOTH interfaces from the same connection
     val redisBytesAsync = connBytes.async() // RedisAsyncCommands<String, ByteArray>
-    val redisBytesSync  = connBytes.sync()  // RedisCommands<String, ByteArray>
 
     val server = NettyServerBuilder.forPort(grpcPort)
         .intercept(JwtAuthInterceptor(jwtSecret))
-        .addService(SessionServiceAsyncImpl(redisBytesAsync)) // expects ASYNC
-        .addService(DekCacheServiceImpl(redisBytesSync))      // expects SYNC
+        .addService(SessionServiceAsyncImpl(redisBytesAsync))  // async sessions
+        .addService(DekCacheServiceAsyncImpl(redisBytesAsync)) // async DEKs
         .permitKeepAliveWithoutCalls(false)
         .keepAliveTime(30, TimeUnit.SECONDS)
         .keepAliveTimeout(10, TimeUnit.SECONDS)
