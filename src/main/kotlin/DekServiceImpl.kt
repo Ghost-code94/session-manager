@@ -25,7 +25,6 @@ class DekCacheServiceImpl(
         // key, seconds, value
         redis.setex(request.keyId, ttl.toLong(), blob)
 
-        log.info("PutDek key=${request.keyId} len=${blob.length} ttl=$ttl")
         PutDekReply.newBuilder().setOk(true).build()
     }
 
@@ -38,9 +37,6 @@ class DekCacheServiceImpl(
         val ttlLeft  = redis.ttl(request.keyId)        // ‑2=no key, ‑1=no expiry
         val ttlSafe  = if (ttlLeft > 0) ttlLeft.toInt() else 0
 
-        log.info(
-            "GetDek key=${request.keyId} len=${stored?.length ?: -1} ttl=$ttlLeft raw='${stored?.take(20)}'"
-        )
 
         if (!stored.isNullOrEmpty()) {
             GetDekReply.newBuilder()

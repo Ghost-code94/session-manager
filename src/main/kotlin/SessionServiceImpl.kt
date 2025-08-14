@@ -25,7 +25,6 @@ class SessionServiceImpl(
         // key, seconds, value  ✅
         redis.setex(request.sessionId, ttl.toLong(), blob)
 
-        log.info("PutSession sid=${request.sessionId} len=${blob.length}")
         PutSessionReply.newBuilder().setOk(true).build()
     }
 
@@ -34,9 +33,7 @@ class SessionServiceImpl(
     ): GetSessionReply = withContext(Dispatchers.IO) {
 
         val stored = redis.get(request.sessionId)
-        log.info(
-            "GetSession sid=${request.sessionId} len=${stored?.length ?: -1} raw='${stored?.take(20)}'"
-        )
+
 
         if (!stored.isNullOrEmpty()) {
             GetSessionReply.newBuilder()
