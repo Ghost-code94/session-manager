@@ -1,57 +1,37 @@
 #!/bin/sh
-set -euo pipefail
+set -eu
 
-# ---- Safety checks ----------------------------------------------------------
-: "${JWT_SECRET:?JWT_SECRET must be set (use fly secrets)}"
-: "${REDIS_PASSWORD:?REDIS_PASSWORD must be set (use fly secrets)}"
+# Optional: secure Redis a bit while keeping it simple
+# If you set REDIS_PASSWORD via fly secrets, Redis will require it; otherwise it runs open (local only).
+if [ -n "${REDIS_PASSWORD:-}" ]; then
+  redis-server --bind 127.0.0.1 --protected-mode yes --save "" --appendonly no --requirepass "$REDIS_PASSWORD" &
+else
+  redis-server --bind 127.0.0.1 --protected-mode yes --save "" --appendonly no &
+fi
 
-# ---- System tuning ----------------------------------------------------------
-ulimit -n "${ULIMIT_NOFILE:-65535}"
-
-# ---- Redis secure local config ---------------------------------------------
-cat >/tmp/redis.conf <<EOF
-bind 127.0.0.1
-protected-mode yes
-port 6379
-requirepass ${REDIS_PASSWORD}
-save ""
-appendonly no
-EOF
-
-redis-server /tmp/redis.conf &
-REDIS_PID=$!
-
-# Wait for Redis to be ready
-i=0
-until redis-cli -a "$REDIS_PASSWORD" -h 127.0.0.1 -p 6379 ping >/dev/null 2>&1; do
-  i=$((i+1)); [ $i -gt 100 ] && { echo "Redis failed to start"; exit 1; }
-  sleep 0.1
+# Wait for Redis readiness (best effort, don’t crash if redis-cli missing)
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  if command -v redis-cli >/dev/null 2>&1; then
+    if [ -n "${REDIS_PASSWORD:-}" ]; then
+      redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_PASSWORD" ping >/dev/null 2>&1 && break
+    else
+      redis-cli -h 127.0.0.1 -p 6379 ping >/dev/null 2>&1 && break
+    fi
+  else
+    break
+  fi
+  sleep 0.2
 done
 
-# Provide REDIS_URL to the app (no secrets in fly.toml)
-export REDIS_URL="redis://default:${REDIS_PASSWORD}@localhost:6379"
+# Build REDIS_URL at runtime (don’t store creds in fly.toml)
+if [ -n "${REDIS_PASSWORD:-}" ]; then
+  export REDIS_URL="redis://default:${REDIS_PASSWORD}@localhost:6379"
+else
+  export REDIS_URL="redis://localhost:6379"
+fi
 
-# ---- JVM flags tuned for containers ----------------------------------------
-JAVA_OPTS="${JAVA_OPTS:-} \
-  -XX:+UseContainerSupport \
-  -XX:MaxRAMPercentage=70 \
-  -XX:InitialRAMPercentage=15 \
-  -XX:MaxDirectMemorySize=128m \
-  -XX:+ExitOnOutOfMemoryError"
+# JVM container-friendly defaults (safe, won’t crash if unsupported)
+JAVA_OPTS="${JAVA_OPTS:-} -XX:+UseContainerSupport -XX:MaxRAMPercentage=70 -XX:MaxDirectMemorySize=128m -XX:+ExitOnOutOfMemoryError"
 
-# Graceful shutdown for both processes
-term() { kill -TERM "$APP_PID" 2>/dev/null || true; kill -TERM "$REDIS_PID" 2>/dev/null || true; }
-trap term INT TERM
-
-# Start the app (don’t exec so traps still work)
-java $JAVA_OPTS -jar /app/app.jar &
-APP_PID=$!
-
-# Wait for either to exit, then clean up
-wait -n "$APP_PID" "$REDIS_PID"
-status=$?
-
-kill -TERM "$APP_PID" "$REDIS_PID" 2>/dev/null || true
-wait "$APP_PID" 2>/dev/null || true
-wait "$REDIS_PID" 2>/dev/null || true
-exit $status
+# Start your app (exec = PID 1 inside tini)
+exec java $JAVA_OPTS -jar /app/app.jar

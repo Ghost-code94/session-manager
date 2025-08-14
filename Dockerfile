@@ -50,4 +50,5 @@ COPY --chmod=755 --chown=ghost:ghost entrypoint.sh /entrypoint.sh
 USER ghost
 
 EXPOSE 50051
-ENTRYPOINT ["/sbin/tini","--","/entrypoint.sh"]
+# ENTRYPOINT ["/sbin/tini","--","/entrypoint.sh"]
+ENTRYPOINT ["/sbin/tini","-s","--","/entrypoint.sh"]
