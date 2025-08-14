@@ -34,8 +34,6 @@ fun main() {
         .build()
         .start()
 
-    println("✅ gRPC server on port $grpcPort (Redis @ $redisUri)")
-
     Runtime.getRuntime().addShutdownHook(Thread {
         server.shutdown().awaitTermination(5, TimeUnit.SECONDS)
         connection.close(); client.shutdown()
