@@ -11,25 +11,27 @@ import grpc.ghostcache.auth.JwtAuthInterceptor
 
 fun main() {
     val grpcPort = System.getenv("GRPC_PORT")?.toInt() ?: 50051
-    val redisUri = System.getenv("REDIS_URL")
+    val redisUri = System.getenv("REDIS_URL")?.takeIf { it.isNotBlank() }
+        ?: error("REDIS_URL not set or blank")
     val jwtSecret = System.getenv("JWT_SECRET")?.takeIf { it.isNotBlank() }
-        ?: error("JWT_SECRET environment variable not set or blank")
+        ?: error("JWT_SECRET not set or blank")
 
     val client = RedisClient.create(redisUri)
     client.setDefaultTimeout(Duration.ofSeconds(2))
 
+    // One connection using String keys + ByteArray values
     val bytesCodec: RedisCodec<String, ByteArray> =
         RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE)
     val connBytes = client.connect(bytesCodec)
-    val redisBytes = connBytes.sync() // RedisAsyncCommands<String, ByteArray>
 
-    val connStr = client.connect(StringCodec.UTF8)
-    val redisStr = connStr.sync()     // RedisAsyncCommands<String, String>
+    // Get BOTH interfaces from the same connection
+    val redisBytesAsync = connBytes.async() // RedisAsyncCommands<String, ByteArray>
+    val redisBytesSync  = connBytes.sync()  // RedisCommands<String, ByteArray>
 
     val server = NettyServerBuilder.forPort(grpcPort)
         .intercept(JwtAuthInterceptor(jwtSecret))
-        .addService(SessionServiceAsyncImpl(redisBytes)) // async version
-        .addService(DekCacheServiceImpl(redisBytes))  // if/when you convert
+        .addService(SessionServiceAsyncImpl(redisBytesAsync)) // expects ASYNC
+        .addService(DekCacheServiceImpl(redisBytesSync))      // expects SYNC
         .permitKeepAliveWithoutCalls(false)
         .keepAliveTime(30, TimeUnit.SECONDS)
         .keepAliveTimeout(10, TimeUnit.SECONDS)
@@ -42,7 +44,7 @@ fun main() {
 
     Runtime.getRuntime().addShutdownHook(Thread {
         server.shutdown().awaitTermination(5, TimeUnit.SECONDS)
-        connBytes.close(); connStr.close(); client.shutdown()
+        connBytes.close(); client.shutdown()
     })
 
     server.awaitTermination()
