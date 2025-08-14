@@ -24,7 +24,7 @@ fun main() {
     val redisBytes = connBytes.sync() // RedisAsyncCommands<String, ByteArray>
 
     val connStr = client.connect(StringCodec.UTF8)
-    val redisStr = connStr.async()     // RedisAsyncCommands<String, String>
+    val redisStr = connStr.sync()     // RedisAsyncCommands<String, String>
 
     val server = NettyServerBuilder.forPort(grpcPort)
         .intercept(JwtAuthInterceptor(jwtSecret))
