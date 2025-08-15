@@ -2,6 +2,7 @@ package ghostcache.api
 
 import io.grpc.netty.NettyServerBuilder
 import io.netty.channel.nio.NioEventLoopGroup
+import io.netty.channel.socket.nio.NioServerSocketChannel   // <-- add
 import io.lettuce.core.RedisClient
 import io.lettuce.core.resource.DefaultClientResources
 import io.lettuce.core.codec.ByteArrayCodec
@@ -14,62 +15,60 @@ import grpc.ghostcache.auth.JwtAuthInterceptor
 
 fun main() {
     val grpcPort = System.getenv("GRPC_PORT")?.toInt() ?: 50051
-    val redisUri = System.getenv("REDIS_URL")?.takeIf { it.isNotBlank() }
-        ?: error("REDIS_URL not set or blank")
+
+    val redisUri = (System.getenv("REDIS_URL")?.takeIf { it.isNotBlank() }
+        ?: error("REDIS_URL not set or blank"))
+
     val jwtSecret = System.getenv("JWT_SECRET")?.takeIf { it.isNotBlank() }
         ?: error("JWT_SECRET not set or blank")
 
-    // ---- Lettuce: small thread pools (this process already runs Netty for gRPC) ----
+    // ---- Lettuce with small pools ----
     val resources = DefaultClientResources.builder()
-        .ioThreadPoolSize(2)          // I/O threads for Redis
-        .computationThreadPoolSize(2) // timers, reconnect, etc.
+        .ioThreadPoolSize(2)
+        .computationThreadPoolSize(2)
         .build()
 
     val client = RedisClient.create(resources, redisUri)
     client.setDefaultTimeout(Duration.ofSeconds(2))
 
-    // String keys + raw bytes values
     val bytesCodec: RedisCodec<String, ByteArray> =
         RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE)
 
     val connBytes = client.connect(bytesCodec)
     val redisBytesAsync = connBytes.async()
 
-    // ---- gRPC/Netty: minimal threads on a 1 vCPU machine ----
+    // ---- Netty event loops (1 vCPU) ----
     val boss   = NioEventLoopGroup(1)
     val worker = NioEventLoopGroup(1)
-
-    // Small CPU-bound executor for app logic (coroutines hop here when needed)
     val appExecutor = Executors.newFixedThreadPool(4)
 
     val server = NettyServerBuilder.forPort(grpcPort)
         .intercept(JwtAuthInterceptor(jwtSecret))
+
+        // You supplied boss/worker → you MUST also supply channelType:
         .bossEventLoopGroup(boss)
         .workerEventLoopGroup(worker)
+        .channelType(NioServerSocketChannel::class.java) // <-- REQUIRED
+
         .executor(appExecutor)
-
-        // --- Connection health & churn ---
-        .permitKeepAliveWithoutCalls(true)   // allow pings on idle conns
-        .keepAliveTime(60, TimeUnit.SECONDS) // reduce ping churn vs 30s
+        .permitKeepAliveWithoutCalls(true)
+        .keepAliveTime(60, TimeUnit.SECONDS)
         .keepAliveTimeout(10, TimeUnit.SECONDS)
-        .maxConnectionIdle(10, TimeUnit.MINUTES) // close long-idle conns
-        // avoid forced reconnect churn: remove maxConnectionAge/Grace
-
-        // --- Back-pressure & memory guards ---
-        .maxConcurrentCallsPerConnection(32) // cap H2 streams/conn (sessions/DEK are small)
-        .flowControlWindow(256 * 1024)       // 256 KiB per-stream window (lower mem than 1MiB)
-        .maxInboundMessageSize(1 * 1024 * 1024) // 1 MiB (sessions/DEK should be << this)
-
-        // keep yours:
-        // .maxInboundMessageSize(4 * 1024 * 1024) // only if you truly need 4MiB
+        .maxConnectionIdle(10, TimeUnit.MINUTES)
+        .maxConcurrentCallsPerConnection(32)
+        .flowControlWindow(256 * 1024)
+        .maxInboundMessageSize(1 * 1024 * 1024)
         .build()
         .start()
 
     Runtime.getRuntime().addShutdownHook(Thread {
         server.shutdown().awaitTermination(5, TimeUnit.SECONDS)
-        connBytes.close(); client.shutdown(); resources.shutdown()
+        connBytes.close()
+        client.shutdown()
+        resources.shutdown()
         appExecutor.shutdown()
-        boss.shutdownGracefully(); worker.shutdownGracefully()
+        boss.shutdownGracefully()
+        worker.shutdownGracefully()
     })
 
     server.awaitTermination()
