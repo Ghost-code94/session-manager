@@ -1,4 +1,3 @@
-// src/main/kotlin/ghostcache/api/AppMain.kt
 package ghostcache.api
 
 import io.grpc.netty.NettyServerBuilder
@@ -32,20 +31,47 @@ fun main() {
     val jwtSecret = System.getenv("JWT_SECRET")?.takeIf { it.isNotBlank() }
         ?: error("JWT_SECRET not set or blank")
 
-    val (boss, worker, channelClazz) = when {
-        // opt-in io_uring with a flag; comment out if you want auto without flag
-        System.getenv("USE_IO_URING") == "1" && IOUring.isAvailable() -> {
-            println("▶ Using io_uring transport")
-            Triple(IOUringEventLoopGroup(1), IOUringEventLoopGroup(), IOUringServerSocketChannel::class.java)
+    // Choose the best available transport with explicit typing to help Kotlin inference
+    val transport: Triple<EventLoopGroup, EventLoopGroup, Class<out ServerChannel>> =
+        when {
+            System.getenv("USE_IO_URING") == "1" && IOUring.isAvailable() -> {
+                println("▶ Using io_uring transport")
+                Triple(
+                    IOUringEventLoopGroup(1),
+                    IOUringEventLoopGroup(),
+                    IOUringServerSocketChannel::class.java
+                )
+            }
+            Epoll.isAvailable() -> {
+                println("▶ Using epoll transport")
+                Triple(
+                    EpollEventLoopGroup(1),
+                    EpollEventLoopGroup(),
+                    EpollServerSocketChannel::class.java
+                )
+            }
+            else -> {
+                println("▶ Using NIO transport (fallback)")
+                Triple(
+                    NioEventLoopGroup(1),
+                    NioEventLoopGroup(),
+                    NioServerSocketChannel::class.java
+                )
+            }
         }
-        Epoll.isAvailable() -> {
-            println("▶ Using epoll transport")
-            Triple(EpollEventLoopGroup(1), EpollEventLoopGroup(), EpollServerSocketChannel::class.java)
-        }
-        else -> {
-            println("▶ Using NIO transport (fallback)")
-            Triple(NioEventLoopGroup(1), NioEventLoopGroup(), NioServerSocketChannel::class.java)
-        }
+
+    val boss: EventLoopGroup = transport.first
+    val worker: EventLoopGroup = transport.second
+    val channelClazz: Class<out ServerChannel> = transport.third
+
+    // (Optional) print unavailability causes to aid debugging
+    if (!Epoll.isAvailable()) {
+        val cause = io.netty.channel.epoll.Epoll.unavailabilityCause()
+        if (cause != null) println("epoll unavailable: ${cause.message}")
+    }
+    if (System.getenv("USE_IO_URING") == "1" && !IOUring.isAvailable()) {
+        val cause = IOUring.unavailabilityCause()
+        if (cause != null) println("io_uring unavailable: ${cause.message}")
     }
 
     val resources = DefaultClientResources.builder()
@@ -80,22 +106,25 @@ fun main() {
         .maxConcurrentCallsPerConnection(48)
         .flowControlWindow(256 * 1024)
         .maxInboundMessageSize(1 * 1024 * 1024)
-
-        // ✅ types now match the service constructors
         .addService(SessionServiceAsyncImpl(rMut))
         .addService(DekCacheServiceAsyncImpl(rMut))
-
         .build()
         .start()
 
     println("✅ gRPC(Session) on :$grpcPort | Redis @$redisUri")
 
     Runtime.getRuntime().addShutdownHook(Thread {
-        server.shutdown().awaitTermination(5, TimeUnit.SECONDS)
-        cR.close(); cW.close()
-        client.shutdown(); resources.shutdown()
-        appExecutor.shutdown()
-        boss.shutdownGracefully(); worker.shutdownGracefully()
+        try {
+            server.shutdown().awaitTermination(5, TimeUnit.SECONDS)
+        } finally {
+            try { cR.close() } catch (_: Throwable) {}
+            try { cW.close() } catch (_: Throwable) {}
+            try { client.shutdown() } catch (_: Throwable) {}
+            try { resources.shutdown() } catch (_: Throwable) {}
+            try { appExecutor.shutdown() } catch (_: Throwable) {}
+            try { boss.shutdownGracefully() } catch (_: Throwable) {}
+            try { worker.shutdownGracefully() } catch (_: Throwable) {}
+        }
     })
 
     server.awaitTermination()
