@@ -71,7 +71,7 @@ fun main() {
         .intercept(JwtAuthInterceptor(jwtSecret))
         .bossEventLoopGroup(boss)
         .workerEventLoopGroup(worker)
-        .channelType(NioServerSocketChannel::class.java)
+        .channelType(channelClazz)
         .executor(appExecutor)
         .permitKeepAliveWithoutCalls(true)
         .keepAliveTime(60, TimeUnit.SECONDS)

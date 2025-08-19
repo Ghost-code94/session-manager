@@ -30,22 +30,26 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-transport-native-epoll</artifactId>
-            <version>5.0.0.Alpha2</version>
+            <version>4.1.124.Final</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-transport-native-epoll</artifactId>
-            <version>5.0.0.Alpha2</version>
+            <version>4.1.124.Final</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.netty.incubator</groupId>
             <artifactId>netty-incubator-transport-native-io_uring</artifactId>
             <version>0.0.26.Final</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.netty.incubator</groupId>
             <artifactId>netty-incubator-transport-native-io_uring</artifactId>
             <version>0.0.26.Final</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>

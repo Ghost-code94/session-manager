@@ -19,9 +19,11 @@ RUN --mount=type=cache,target=/root/.m2,id=ghostcache-m2-cache \
 ############################
 FROM eclipse-temurin:17-jdk-alpine AS jre
 RUN jlink \
-     --add-modules java.base,java.logging,java.naming,java.security.jgss \
-     --no-header-files --no-man-pages --strip-debug \
-     --output /customjre
+  --add-modules java.base,java.logging,java.naming,java.security.jgss,\
+jdk.unsupported,jdk.crypto.ec \
+  --no-header-files --no-man-pages --strip-debug \
+  --output /customjre
+
 
 ############################
 # 3 ─── Final runtime ──────
