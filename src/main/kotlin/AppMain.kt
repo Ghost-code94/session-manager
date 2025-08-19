@@ -9,6 +9,9 @@ import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.epoll.Epoll
 import io.netty.channel.epoll.EpollEventLoopGroup
 import io.netty.channel.epoll.EpollServerSocketChannel
+import io.netty.incubator.channel.uring.IOUring
+import io.netty.incubator.channel.uring.IOUringEventLoopGroup
+import io.netty.incubator.channel.uring.IOUringServerSocketChannel
 import grpc.ghostcache.auth.JwtAuthInterceptor
 import io.lettuce.core.RedisClient
 import io.lettuce.core.codec.ByteArrayCodec
@@ -29,6 +32,22 @@ fun main() {
     val jwtSecret = System.getenv("JWT_SECRET")?.takeIf { it.isNotBlank() }
         ?: error("JWT_SECRET not set or blank")
 
+    val (boss, worker, channelClazz) = when {
+        // opt-in io_uring with a flag; comment out if you want auto without flag
+        System.getenv("USE_IO_URING") == "1" && IOUring.isAvailable() -> {
+            println("▶ Using io_uring transport")
+            Triple(IOUringEventLoopGroup(1), IOUringEventLoopGroup(), IOUringServerSocketChannel::class.java)
+        }
+        Epoll.isAvailable() -> {
+            println("▶ Using epoll transport")
+            Triple(EpollEventLoopGroup(1), EpollEventLoopGroup(), EpollServerSocketChannel::class.java)
+        }
+        else -> {
+            println("▶ Using NIO transport (fallback)")
+            Triple(NioEventLoopGroup(1), NioEventLoopGroup(), NioServerSocketChannel::class.java)
+        }
+    }
+
     val resources = DefaultClientResources.builder()
         .ioThreadPoolSize(2)
         .computationThreadPoolSize(2)
@@ -46,8 +65,6 @@ fun main() {
     val rGet = cR.async()            // RedisAsyncCommands<String, ByteArray>
     val rMut = cW.async()            // RedisAsyncCommands<String, ByteArray>
 
-    val boss   = NioEventLoopGroup(1)
-    val worker = NioEventLoopGroup(1)
     val appExecutor = Executors.newFixedThreadPool(4)
 
     val server = NettyServerBuilder.forPort(grpcPort)

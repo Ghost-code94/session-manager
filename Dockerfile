@@ -28,7 +28,7 @@ RUN jlink \
 ############################
 FROM alpine:3.20
 
-RUN apk add --no-cache redis tini
+RUN apk add --no-cache redis tini libstdc++
 
 # Slimmed‑down JRE
 COPY --from=jre /customjre /opt/jre
@@ -39,6 +39,7 @@ RUN addgroup -S ghost -g 1000 && adduser -S ghost -G ghost -u 1000
 
 WORKDIR /app
 ENV GRPC_PORT=50051
+ENV USE_IO_URING=1
 
 # Copy artefacts (exact filename → single source)
 COPY --chown=ghost:ghost --from=build \
