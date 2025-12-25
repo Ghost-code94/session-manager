@@ -1,8 +1,0 @@
-#!/bin/sh
-
-CP="/Users/ghost/.m2/repository/io/grpc/protoc-gen-grpc-kotlin/1.4.1/protoc-gen-grpc-kotlin-1.4.1-jdk8.jar"
-ARGS=""
-JVMARGS=""
-
-"/Users/ghost/.vscode/extensions/redhat.java-1.50.0-darwin-arm64/jre/21.0.9-macosx-aarch64/bin/java" $JVMARGS -cp $CP io.grpc.kotlin.generator.GeneratorRunner $ARGS
-
