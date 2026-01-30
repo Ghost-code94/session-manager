@@ -111,8 +111,6 @@ fun main() {
         .build()
         .start()
 
-    println("✅ gRPC(Session) on :$grpcPort | Redis @$redisUri")
-
     Runtime.getRuntime().addShutdownHook(Thread {
         try {
             server.shutdown().awaitTermination(5, TimeUnit.SECONDS)
