@@ -6,7 +6,7 @@ primary_region = "dfw"
 
 
 [[services]]
-  internal_port = 50051
+  internal_port = 50051         # your Netty gRPC server port
   protocol      = "tcp"
   auto_stop_machines = "suspend"
   auto_start_machines = true
@@ -18,11 +18,11 @@ primary_region = "dfw"
     hard_limit = 150
 
   [[services.ports]]
-    port     = 443
-    handlers = ["tls", "http"]
+    port     = 443              # public port
+    handlers = ["tls"]          # TLS termination
 
-  [services.http_options]
-    h2_backend = true
+  [services.ports.tls_options]
+    alpn = ["h2"]               # route only HTTP/2 (gRPC) traffic
 
 # VM size
 [[vm]]
