@@ -7,6 +7,7 @@ primary_region = "dfw"
 [http_service]
   internal_port = 50051
   force_https = true
+  h2_backend = true
   auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 0
